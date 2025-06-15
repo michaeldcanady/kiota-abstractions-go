@@ -6,6 +6,10 @@ import (
 	"strings"
 )
 
+type Validator[T any] interface {
+	Validate(T) (bool, error)
+}
+
 // AllowedHostsValidator maintains a list of valid hosts and allows authentication providers to check whether a host is valid before authenticating a request
 type AllowedHostsValidator struct {
 	validHosts map[string]bool

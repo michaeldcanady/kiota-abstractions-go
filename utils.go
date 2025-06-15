@@ -1,9 +1,12 @@
 package abstractions
 
 import (
+	"errors"
+	"time"
+
 	"github.com/google/uuid"
 	"github.com/microsoft/kiota-abstractions-go/serialization"
-	"time"
+	s "github.com/microsoft/kiota-abstractions-go/serialization"
 )
 
 // SetValue receives a source function and applies the results to the setter
@@ -369,4 +372,25 @@ func CopyStringMap(items map[string]string) map[string]string {
 		result[idx] = item
 	}
 	return result
+}
+
+func GetSerializationWriter(requestAdapter RequestAdapter, contentType string, items ...interface{}) (s.SerializationWriter, error) {
+	if contentType == "" {
+		return nil, errors.New("content type cannot be empty")
+	} else if requestAdapter == nil {
+		return nil, errors.New("requestAdapter cannot be nil")
+	} else if len(items) == 0 {
+		return nil, errors.New("items cannot be nil or empty")
+	}
+	factory := requestAdapter.GetSerializationWriterFactory()
+	if factory == nil {
+		return nil, errors.New("factory cannot be nil")
+	}
+	writer, err := factory.GetSerializationWriter(contentType)
+	if err != nil {
+		return nil, err
+	} else if writer == nil {
+		return nil, errors.New("writer cannot be nil")
+	}
+	return writer, nil
 }
