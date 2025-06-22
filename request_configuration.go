@@ -5,7 +5,7 @@ type RequestConfiguration[T any] struct {
 	// Request headers
 	Headers *RequestHeaders
 	// Request options
-	Options []RequestOption
+	Options []ResponseOption
 	// Query parameters
 	QueryParameters *T
 }

@@ -2,6 +2,7 @@ package authentication
 
 import (
 	"context"
+	nethttp "net/http"
 	u "net/url"
 	"testing"
 
@@ -20,5 +21,5 @@ func (m *MockAccessTokenProvider) GetAllowedHostsValidator() *AllowedHostsValida
 func TestBaseBearerProviderHonoursInterface(t *testing.T) {
 	mockToken := &MockAccessTokenProvider{}
 	instance := NewBaseBearerTokenAuthenticationProvider(mockToken)
-	assert.Implements(t, (*AuthenticationProvider)(nil), instance)
+	assert.Implements(t, (*AuthenticationProvider[*nethttp.Request])(nil), instance)
 }

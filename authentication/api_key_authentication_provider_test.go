@@ -2,6 +2,7 @@ package authentication
 
 import (
 	"context"
+	nethttp "net/http"
 	"testing"
 
 	abstractions "github.com/microsoft/kiota-abstractions-go"
@@ -12,7 +13,7 @@ func TestItImplementsInterface(t *testing.T) {
 	res1, res2 := NewApiKeyAuthenticationProvider("key", "param", HEADER_KEYLOCATION)
 	assert.Nil(t, res2)
 	assert.NotNil(t, res1)
-	res := AuthenticationProvider(res1)
+	res := AuthenticationProvider[*nethttp.Request](res1)
 	assert.NotNil(t, res)
 }
 

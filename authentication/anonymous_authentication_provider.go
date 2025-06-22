@@ -2,15 +2,15 @@ package authentication
 
 import (
 	"context"
-
-	abs "github.com/microsoft/kiota-abstractions-go"
 )
 
+var _ AuthenticationProvider[any] = (*AnonymousAuthenticationProvider[any])(nil)
+
 // AnonymousAuthenticationProvider implements the AuthenticationProvider interface does not perform any authentication.
-type AnonymousAuthenticationProvider struct {
+type AnonymousAuthenticationProvider[T any] struct {
 }
 
 // AuthenticateRequest is a placeholder method that "authenticates" the RequestInformation instance: no-op.
-func (provider *AnonymousAuthenticationProvider) AuthenticateRequest(context context.Context, request *abs.Request, additionalAuthenticationContext map[string]interface{}) error {
+func (provider *AnonymousAuthenticationProvider[T]) AuthenticateRequest(context context.Context, request T, additionalAuthenticationContext map[string]interface{}) error {
 	return nil
 }

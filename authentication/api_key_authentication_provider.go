@@ -3,13 +3,14 @@ package authentication
 import (
 	"context"
 	"errors"
+	nethttp "net/http"
 	"strings"
-
-	abs "github.com/microsoft/kiota-abstractions-go"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 )
+
+var _ AuthenticationProvider[*nethttp.Request] = (*ApiKeyAuthenticationProvider)(nil)
 
 // ApiKeyAuthenticationProvider implements the AuthenticationProvider interface and adds an API key to the request.
 type ApiKeyAuthenticationProvider struct {
@@ -55,20 +56,16 @@ func NewApiKeyAuthenticationProviderWithValidHosts(apiKey string, parameterName 
 }
 
 // AuthenticateRequest adds the API key to the request.
-func (p *ApiKeyAuthenticationProvider) AuthenticateRequest(ctx context.Context, request *abs.RequestInformation, additionalAuthenticationContext map[string]interface{}) error {
+func (p *ApiKeyAuthenticationProvider) AuthenticateRequest(ctx context.Context, request *nethttp.Request, additionalAuthenticationContext map[string]interface{}) error {
 	ctx, span := otel.GetTracerProvider().Tracer("github.com/microsoft/kiota-abstractions-go").Start(ctx, "GetAuthorizationToken")
 	defer span.End()
 	if request == nil {
 		return errors.New("request cannot be nil")
 	}
 
-	url, err := request.GetUri()
+	url := request.URL
 
-	if err != nil {
-		return err
-	}
-
-	if !(*(p.validator)).IsUrlHostValid(url) {
+	if !(*p.validator).IsUrlHostValid(url) {
 		span.SetAttributes(attribute.Bool("com.microsoft.kiota.authentication.is_url_valid", false))
 		return nil
 	}
@@ -85,9 +82,9 @@ func (p *ApiKeyAuthenticationProvider) AuthenticateRequest(ctx context.Context, 
 		query := url.Query()
 		query.Set(p.parameterName, p.apiKey)
 		url.RawQuery = query.Encode()
-		request.SetUri(*url)
+		request.URL = url
 	case HEADER_KEYLOCATION:
-		request.Headers.Add(p.parameterName, p.apiKey)
+		request.Header.Add(p.parameterName, p.apiKey)
 	}
 
 	return nil

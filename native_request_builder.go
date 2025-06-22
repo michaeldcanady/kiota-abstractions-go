@@ -1,10 +1,12 @@
 package abstractions
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"maps"
+	nethttp "net/http"
 	"reflect"
 	"strings"
 	"time"
@@ -15,22 +17,14 @@ import (
 	stduritemplate "github.com/std-uritemplate/std-uritemplate/go/v2"
 )
 
-var _ RequestBuilder = (*NativeRequestBuilder)(nil)
-
-type Builder[T any] interface {
-	Build() (*T, error)
-}
-
-type RequestBuilder interface {
-	Builder[Request]
-}
+var _ RequestBuilder[*nethttp.Request] = (*NativeRequestBuilder)(nil)
 
 // NativeRequestBuilder is the base class for all request builders.
 type NativeRequestBuilder struct {
 	// pathParameters The path parameters for the request
 	pathParameters map[string]any
 	// requestAdapter The request adapter to use to execute the requests.
-	requestAdapter RequestAdapter
+	requestAdapter RequestAdapter[*nethttp.Request]
 	// urlTemplate The url template to use to build the URL for the current request builder
 	urlTemplate string
 	// method The HTTP method of the request.
@@ -42,13 +36,13 @@ type NativeRequestBuilder struct {
 	// content The Request content.
 	content []byte
 	// options The Request options.
-	options map[string]RequestOption
+	options map[string]ResponseOption
 	// context The context of the request.
 	context context.Context
 }
 
-// NewBaseRequestBuilder creates a new BaseRequestBuilder instance.
-func NewBaseRequestBuilder(requestAdapter RequestAdapter, urlTemplate string, pathParameters map[string]any) *NativeRequestBuilder {
+// NewNativeRequestBuilder creates a new BaseRequestBuilder instance.
+func NewNativeRequestBuilder(requestAdapter RequestAdapter[*nethttp.Request], urlTemplate string, pathParameters map[string]any) *NativeRequestBuilder {
 	return &NativeRequestBuilder{
 		requestAdapter: requestAdapter,
 		urlTemplate:    urlTemplate,
@@ -62,12 +56,12 @@ func (rB *NativeRequestBuilder) WithHeaders(headers *RequestHeaders) *NativeRequ
 	return rB
 }
 
-func (rB *NativeRequestBuilder) WithOptions(options ...RequestOption) *NativeRequestBuilder {
+func (rB *NativeRequestBuilder) WithOptions(options ...ResponseOption) *NativeRequestBuilder {
 	if len(options) == 0 {
 		return rB
 	}
 	if len(rB.options) == 0 {
-		rB.options = make(map[string]RequestOption, len(options))
+		rB.options = make(map[string]ResponseOption, len(options))
 	}
 	for _, option := range options {
 		rB.options[option.GetKey().Key] = option
@@ -250,7 +244,7 @@ func (rB *NativeRequestBuilder) getURI() (*u.URL, error) {
 		}
 		return uri, nil
 	}
-	_, baseurlExists := rB.pathParameters["baseurl"]
+	_, baseurlExists := rB.pathParameters[base_url_key]
 	if !baseurlExists && strings.Contains(strings.ToLower(rB.urlTemplate), "{+baseurl}") {
 		return nil, errors.New("pathParameters must contain a value for \"baseurl\" for the url to be built")
 	}
@@ -270,36 +264,29 @@ func (rB *NativeRequestBuilder) getURI() (*u.URL, error) {
 	return uri, err
 }
 
-func (rB *NativeRequestBuilder) Build() (*Request, error) {
+func (rB *NativeRequestBuilder) Build() (*nethttp.Request, error) {
 	uri, err := rB.getURI()
 	if err != nil {
 		return nil, err
 	}
 
-	request := &Request{
-		Method:          rB.method,
-		uri:             uri,
-		Headers:         rB.headers,
-		QueryParameters: rB.queryParameters,
-		Content:         rB.content,
-		PathParameters:  rB.pathParameters,
-		UrlTemplate:     rB.urlTemplate,
-		options:         rB.options,
+	request, err := nethttp.NewRequestWithContext(rB.context, rB.method.String(), uri.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+	if len(rB.content) > 0 {
+		reader := bytes.NewReader(rB.content)
+		request.Body = NopCloser(reader)
+	}
+	request.Header = make(nethttp.Header)
+	if rB.headers != nil {
+		for _, key := range rB.headers.ListKeys() {
+			values := rB.headers.Get(key)
+			for _, v := range values {
+				request.Header.Add(key, v)
+			}
+		}
 	}
 
 	return request, nil
-}
-
-func ConfigureRequest[T any](request *NativeRequestBuilder, config *RequestConfiguration[T]) {
-	if request == nil {
-		return
-	}
-	if config == nil {
-		return
-	}
-	if config.QueryParameters != nil {
-		request.WithQueryParameters(*(config.QueryParameters))
-	}
-	request.WithHeaders(config.Headers)
-	request.WithOptions(config.Options...)
 }

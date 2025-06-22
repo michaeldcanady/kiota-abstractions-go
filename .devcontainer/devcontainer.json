@@ -9,20 +9,7 @@
       },
       "extensions": [
         "golang.Go",
-        "EditorConfig.EditorConfig",
-        "GitHub.vscode-pull-request-github",
-        "donjayamanne.githistory",
-        "waderyan.gitblame",
-        "streetsidesoftware.code-spell-checker",
-        "VisualStudioExptTeam.vscodeintellicode",
-        "ms-vsliveshare.vsliveshare",
-        "esbenp.prettier-vscode",
-        "usernamehw.errorlens",
-        "golang.go",
-        "msyrus.go-doc",
-        "766b.go-outliner",
-        "yzhang.markdown-all-in-one",
-        "Gruntfuggly.todo-tree"
+        "tooltitudeteam.tooltitude"
       ]
     }
   },

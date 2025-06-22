@@ -7,6 +7,6 @@ import (
 )
 
 func TestAnonymousProviderHonoursInterface(t *testing.T) {
-	instance := &AnonymousAuthenticationProvider{}
-	assert.Implements(t, (*AuthenticationProvider)(nil), instance)
+	instance := &AnonymousAuthenticationProvider[any]{}
+	assert.Implements(t, (*AuthenticationProvider[any])(nil), instance)
 }

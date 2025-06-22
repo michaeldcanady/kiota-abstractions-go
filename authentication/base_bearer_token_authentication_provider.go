@@ -3,12 +3,17 @@ package authentication
 import (
 	"context"
 	"errors"
+	"fmt"
 
-	abs "github.com/microsoft/kiota-abstractions-go"
+	nethttp "net/http"
 )
 
-const authorizationHeader = "Authorization"
-const claimsKey = "claims"
+const (
+	authorizationHeader = "Authorization"
+	claimsKey           = "claims"
+)
+
+var _ AuthenticationProvider[*nethttp.Request] = (*BaseBearerTokenAuthenticationProvider)(nil)
 
 // BaseBearerTokenAuthenticationProvider provides a base class implementing AuthenticationProvider for Bearer token scheme.
 type BaseBearerTokenAuthenticationProvider struct {
@@ -22,32 +27,27 @@ func NewBaseBearerTokenAuthenticationProvider(accessTokenProvider AccessTokenPro
 }
 
 // AuthenticateRequest authenticates the provided RequestInformation instance using the provided authorization token callback.
-func (provider *BaseBearerTokenAuthenticationProvider) AuthenticateRequest(ctx context.Context, request *abs.Request, additionalAuthenticationContext map[string]interface{}) error {
+func (provider *BaseBearerTokenAuthenticationProvider) AuthenticateRequest(ctx context.Context, request *nethttp.Request, additionalAuthenticationContext map[string]interface{}) error {
 	if request == nil {
 		return errors.New("request is nil")
 	}
-	if request.Headers == nil {
-		request.Headers = abs.NewRequestHeaders()
+	if request.Header == nil {
+		request.Header = make(nethttp.Header)
 	}
 	if provider.accessTokenProvider == nil {
 		return errors.New("this class needs to be initialized with an access token provider")
 	}
-	if len(additionalAuthenticationContext) > 0 &&
-		additionalAuthenticationContext[claimsKey] != nil &&
-		request.Headers.ContainsKey(authorizationHeader) {
-		request.Headers.Remove(authorizationHeader)
+	if _, ok := request.Header[authorizationHeader]; additionalAuthenticationContext[claimsKey] != nil && ok {
+		request.Header.Del(authorizationHeader)
 	}
-	if !request.Headers.ContainsKey(authorizationHeader) {
-		uri, err := request.GetUri()
-		if err != nil {
-			return err
-		}
+	if _, ok := request.Header[authorizationHeader]; !ok {
+		uri := request.URL
 		token, err := provider.accessTokenProvider.GetAuthorizationToken(ctx, uri, additionalAuthenticationContext)
 		if err != nil {
 			return err
 		}
 		if token != "" {
-			request.Headers.Add(authorizationHeader, "Bearer "+token)
+			request.Header.Add(authorizationHeader, fmt.Sprintf("Bearer %s", token))
 		}
 	}
 
